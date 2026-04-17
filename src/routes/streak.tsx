@@ -22,6 +22,7 @@ function StreakPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [newStreakValue, setNewStreakValue] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showSynced, setShowSynced] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   const loadUser = useCallback(async () => {
@@ -34,6 +35,8 @@ function StreakPage() {
     const synced = await syncCloudToLocalStreak();
     setStreakData(synced);
     setIsSyncing(false);
+    setShowSynced(true);
+    setTimeout(() => setShowSynced(false), 3000);
   }, []);
 
   useEffect(() => {
@@ -104,10 +107,12 @@ function StreakPage() {
 
         <div className="absolute top-4 left-6">
            {user ? (
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100">
-                <Cloud className="h-3 w-3" />
-                Synced
-              </span>
+             showSynced && (
+               <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 animate-in fade-in zoom-in duration-300">
+                 <Cloud className="h-3 w-3" />
+                 Synced
+               </span>
+             )
             ) : (
               <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
                 <HardDrive className="h-3 w-3" />
