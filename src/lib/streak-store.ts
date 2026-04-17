@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+import { fetchCloudStreak, upsertCloudStreak } from "./streak-cloud";
 
 export interface StreakData {
   currentStreak: number;
@@ -24,7 +26,24 @@ export function getStreakData(): StreakData {
   }
 }
 
-export function updateStreak(): StreakData {
+export async function syncCloudToLocalStreak(): Promise<StreakData> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return getStreakData();
+
+  try {
+    const cloudStreak = await fetchCloudStreak();
+    if (cloudStreak) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudStreak));
+      return cloudStreak;
+    }
+    return getStreakData();
+  } catch (error) {
+    console.error("Failed to sync cloud streak:", error);
+    return getStreakData();
+  }
+}
+
+export async function updateStreak(): Promise<StreakData> {
   const data = getStreakData();
   const today = new Date().toISOString().split("T")[0];
   
@@ -60,10 +79,20 @@ export function updateStreak(): StreakData {
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    try {
+      await upsertCloudStreak(newData, user.id);
+    } catch (error) {
+      console.error("Failed to update cloud streak:", error);
+    }
+  }
+
   return newData;
 }
 
-export function setStreak(count: number): StreakData {
+export async function setStreak(count: number): Promise<StreakData> {
   const data = getStreakData();
   const newData = { 
     ...data, 
@@ -71,10 +100,20 @@ export function setStreak(count: number): StreakData {
     longestStreak: Math.max(data.longestStreak, count)
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    try {
+      await upsertCloudStreak(newData, user.id);
+    } catch (error) {
+      console.error("Failed to update cloud streak:", error);
+    }
+  }
+
   return newData;
 }
 
-export function resetStreak(): StreakData {
+export async function resetStreak(): Promise<StreakData> {
   const defaultData: StreakData = {
     currentStreak: 0,
     longestStreak: 0,
@@ -82,5 +121,15 @@ export function resetStreak(): StreakData {
     activityHistory: [],
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    try {
+      await upsertCloudStreak(defaultData, user.id);
+    } catch (error) {
+      console.error("Failed to update cloud streak:", error);
+    }
+  }
+
   return defaultData;
 }

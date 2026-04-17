@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Flame, Calendar, Trophy, Zap, Star, Info, Settings2, RotateCcw, Check } from "lucide-react";
-import { getStreakData, setStreak, resetStreak, type StreakData } from "@/lib/streak-store";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { Flame, Calendar, Trophy, Zap, Star, Info, Settings2, RotateCcw, Check, Cloud, RefreshCw, HardDrive } from "lucide-react";
+import { getStreakData, setStreak, resetStreak, syncCloudToLocalStreak, type StreakData } from "@/lib/streak-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/streak")({
   component: StreakPage,
@@ -20,6 +21,25 @@ function StreakPage() {
   const [streakData, setStreakData] = useState<StreakData>(() => getStreakData());
   const [showSettings, setShowSettings] = useState(false);
   const [newStreakValue, setNewStreakValue] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  const loadUser = useCallback(async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    setUser(authUser);
+  }, []);
+
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true);
+    const synced = await syncCloudToLocalStreak();
+    setStreakData(synced);
+    setIsSyncing(false);
+  }, []);
+
+  useEffect(() => {
+    loadUser();
+    handleSync();
+  }, [loadUser, handleSync]);
 
   const dailyQuote = useMemo(() => {
     const day = new Date().getDate();
@@ -39,18 +59,18 @@ function StreakPage() {
     return days;
   }, [streakData]);
 
-  const handleUpdateStreak = () => {
+  const handleUpdateStreak = async () => {
     const val = parseInt(newStreakValue);
     if (!isNaN(val) && val >= 0) {
-      const updated = setStreak(val);
+      const updated = await setStreak(val);
       setStreakData(updated);
       setNewStreakValue("");
     }
   };
 
-  const handleResetStreak = () => {
+  const handleResetStreak = async () => {
     if (confirm("Are you sure you want to reset your streak? This will clear all progress.")) {
-      const updated = resetStreak();
+      const updated = await resetStreak();
       setStreakData(updated);
     }
   };
@@ -62,7 +82,16 @@ function StreakPage() {
         <div className="absolute -top-24 -left-24 h-64 w-64 bg-orange-500/10 rounded-full blur-[100px] -z-10 animate-pulse" />
         <div className="absolute -bottom-24 -right-24 h-64 w-64 bg-yellow-500/20 rounded-full blur-[100px] -z-10" />
         
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex gap-2">
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             className="rounded-full hover:bg-orange-500/10 text-muted-foreground hover:text-orange-500"
+             onClick={handleSync}
+             disabled={isSyncing}
+           >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+           </Button>
            <Button 
              variant="ghost" 
              size="icon" 
@@ -73,7 +102,28 @@ function StreakPage() {
            </Button>
         </div>
 
-        <div className="relative mb-6 inline-flex items-center justify-center">
+        <div className="absolute top-4 left-6">
+           {user ? (
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100">
+                <Cloud className="h-3 w-3" />
+                Synced
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                <HardDrive className="h-3 w-3" />
+                Local
+              </span>
+            )}
+        </div>
+
+        {isSyncing && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-[10px] font-bold text-orange-600/60 uppercase tracking-widest animate-pulse">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Syncing
+          </div>
+        )}
+
+        <div className="relative mb-6 mt-4 inline-flex items-center justify-center">
              <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full animate-pulse" />
              <div className="relative rounded-3xl bg-gradient-to-br from-orange-500 to-yellow-500 p-6 shadow-lg shadow-orange-500/20 transform hover:scale-105 transition-transform duration-500">
                 <Flame className="h-16 w-16 text-white" />
