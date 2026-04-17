@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, useLocation } from "@tanstack/react-router";
 import { BookOpen, Calendar } from "lucide-react";
-
-import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
@@ -27,67 +25,50 @@ function NotFoundComponent() {
 }
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Bible Memory" },
-      { name: "description", content: "Save and memorize your favorite scriptures." },
-      { property: "og:title", content: "Bible Memory" },
-      { property: "og:type", content: "website" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      {
-        rel: "manifest",
-        href: "/manifest.json",
-      },
-      {
-        rel: "icon",
-        href: "/icon-192.png",
-        type: "image/png",
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
 });
 
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
-
+const navItems = [
+  { label: "Verses", icon: BookOpen, to: "/" },
+  { label: "Schedule", icon: Calendar, to: "/schedule" },
+] as const;
 
 function RootComponent() {
   const location = useLocation();
-  
+
   useEffect(() => {
     import("@/lib/pwa-register").then(({ registerServiceWorker }) => {
       registerServiceWorker();
     });
   }, []);
 
-  const navItems = [
-    { label: "Verses", icon: BookOpen, to: "/" },
-    { label: "Schedule", icon: Calendar, to: "/schedule" },
-  ];
-
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-16 sm:pb-0 sm:pt-0">
+    <div className="flex min-h-screen flex-col bg-background pb-16 sm:pb-0">
+      {/* Desktop Top Nav */}
+      <nav className="hidden border-b bg-background/80 backdrop-blur-lg sm:block">
+        <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
+          <Link to="/" className="font-serif text-xl font-bold text-primary">
+            Bible Memory
+          </Link>
+          <div className="flex items-center gap-6">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === item.to
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </nav>
+
       <main className="flex-1">
         <Outlet />
       </main>
@@ -113,27 +94,6 @@ function RootComponent() {
           })}
         </div>
       </nav>
-
-      {/* Desktop Side/Top Nav placeholder - simple link for now */}
-      <nav className="hidden border-b bg-background/80 backdrop-blur-lg sm:block">
-        <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
-          <Link to="/" className="font-serif text-xl font-bold text-primary">Bible Memory</Link>
-          <div className="flex items-center gap-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`text-sm font-medium transition-colors ${
-                  location.pathname === item.to ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </nav>
     </div>
   );
 }
-
