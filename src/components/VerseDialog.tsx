@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,19 +9,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import type { BibleVerse } from "@/lib/verse-store";
 
-interface AddVerseDialogProps {
-  onAdd: (reference: string, text: string, tags: string[]) => void;
+interface VerseDialogProps {
+  onSave: (reference: string, text: string, tags: string[]) => void;
   existingTags: string[];
+  initialVerse?: BibleVerse;
+  trigger?: React.ReactNode;
 }
 
-export function AddVerseDialog({ onAdd, existingTags }: AddVerseDialogProps) {
+export function VerseDialog({ onSave, existingTags, initialVerse, trigger }: VerseDialogProps) {
   const [open, setOpen] = useState(false);
-  const [reference, setReference] = useState("");
-  const [text, setText] = useState("");
-  const [tagInput, setTagInput] = useState("");
+  const [reference, setReference] = useState(initialVerse?.reference ?? "");
+  const [text, setText] = useState(initialVerse?.text ?? "");
+  const [tagInput, setTagInput] = useState(initialVerse?.tags.join(", ") ?? "");
+
+  useEffect(() => {
+    if (open) {
+      setReference(initialVerse?.reference ?? "");
+      setText(initialVerse?.text ?? "");
+      setTagInput(initialVerse?.tags.join(", ") ?? "");
+    }
+  }, [open, initialVerse]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,25 +40,35 @@ export function AddVerseDialog({ onAdd, existingTags }: AddVerseDialogProps) {
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    onAdd(reference, text, tags);
-    setReference("");
-    setText("");
-    setTagInput("");
+    onSave(reference, text, tags);
+    if (!initialVerse) {
+      setReference("");
+      setText("");
+      setTagInput("");
+    }
     setOpen(false);
   }
+
+  const isEditing = !!initialVerse;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="gap-2 shadow-md">
-          <Plus className="h-5 w-5" />
-          Add Verse
-        </Button>
+        {trigger || (
+          <Button size="lg" className="gap-2 shadow-md">
+            <Plus className="h-5 w-5" />
+            Add Verse
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl">Add a Bible Verse</DialogTitle>
-          <DialogDescription>Enter the verse reference, text, and optional tags.</DialogDescription>
+          <DialogTitle className="font-serif text-xl">
+            {isEditing ? "Edit Bible Verse" : "Add a Bible Verse"}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Update the verse details." : "Enter the verse reference, text, and optional tags."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -107,10 +127,11 @@ export function AddVerseDialog({ onAdd, existingTags }: AddVerseDialogProps) {
             )}
           </div>
           <Button type="submit" className="w-full">
-            Save Verse
+            {isEditing ? "Update Verse" : "Save Verse"}
           </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+

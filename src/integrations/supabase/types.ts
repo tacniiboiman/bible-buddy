@@ -41,6 +41,34 @@ export type Database = {
         }
         Relationships: []
       }
+      schedules: {
+        Row: {
+          id: string
+          user_id: string
+          day_of_week: number
+          activity: string
+          activity_time: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          day_of_week: number
+          activity: string
+          activity_time?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          day_of_week?: number
+          activity?: string
+          activity_time?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
     }
     Views: {
       [_ in never]: never

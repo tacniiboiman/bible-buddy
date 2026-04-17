@@ -50,3 +50,32 @@ export async function deleteCloudVerse(id: string): Promise<void> {
   const { error } = await supabase.from("verses").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function updateCloudVerse(
+  id: string,
+  reference: string,
+  text: string,
+  tags: string[]
+): Promise<BibleVerse> {
+  const { data, error } = await supabase
+    .from("verses")
+    .update({
+      reference: reference.trim(),
+      text: text.trim(),
+      tags: tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    reference: data.reference,
+    text: data.text,
+    tags: data.tags || [],
+    createdAt: data.created_at,
+  };
+}
+
