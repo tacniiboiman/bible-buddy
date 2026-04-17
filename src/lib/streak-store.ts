@@ -62,3 +62,25 @@ export function updateStreak(): StreakData {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
   return newData;
 }
+
+export function setStreak(count: number): StreakData {
+  const data = getStreakData();
+  const newData = { 
+    ...data, 
+    currentStreak: count,
+    longestStreak: Math.max(data.longestStreak, count)
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+  return newData;
+}
+
+export function resetStreak(): StreakData {
+  const defaultData: StreakData = {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null,
+    activityHistory: [],
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
+  return defaultData;
+}

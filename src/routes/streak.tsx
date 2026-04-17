@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Flame, Calendar, Trophy, Zap, Star, Info } from "lucide-react";
-import { getStreakData } from "@/lib/streak-store";
+import { useMemo, useState } from "react";
+import { Flame, Calendar, Trophy, Zap, Star, Info, Settings2, RotateCcw, Check } from "lucide-react";
+import { getStreakData, setStreak, resetStreak, type StreakData } from "@/lib/streak-store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/streak")({
   component: StreakPage,
@@ -15,8 +17,10 @@ const INSPIRATION = [
 ];
 
 function StreakPage() {
-  const streakData = useMemo(() => getStreakData(), []);
-  
+  const [streakData, setStreakData] = useState<StreakData>(() => getStreakData());
+  const [showSettings, setShowSettings] = useState(false);
+  const [newStreakValue, setNewStreakValue] = useState("");
+
   const dailyQuote = useMemo(() => {
     const day = new Date().getDate();
     return INSPIRATION[day % INSPIRATION.length];
@@ -35,6 +39,22 @@ function StreakPage() {
     return days;
   }, [streakData]);
 
+  const handleUpdateStreak = () => {
+    const val = parseInt(newStreakValue);
+    if (!isNaN(val) && val >= 0) {
+      const updated = setStreak(val);
+      setStreakData(updated);
+      setNewStreakValue("");
+    }
+  };
+
+  const handleResetStreak = () => {
+    if (confirm("Are you sure you want to reset your streak? This will clear all progress.")) {
+      const updated = resetStreak();
+      setStreakData(updated);
+    }
+  };
+
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-4 py-8 sm:px-6">
       <header className="mb-10 text-center relative border border-border/20 rounded-3xl p-10 bg-card/40 backdrop-blur-xl shadow-xl shadow-orange-500/5 isolate overflow-hidden">
@@ -42,6 +62,17 @@ function StreakPage() {
         <div className="absolute -top-24 -left-24 h-64 w-64 bg-orange-500/10 rounded-full blur-[100px] -z-10 animate-pulse" />
         <div className="absolute -bottom-24 -right-24 h-64 w-64 bg-yellow-500/20 rounded-full blur-[100px] -z-10" />
         
+        <div className="absolute top-4 right-4">
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             className="rounded-full hover:bg-orange-500/10 text-muted-foreground hover:text-orange-500"
+             onClick={() => setShowSettings(!showSettings)}
+           >
+              <Settings2 className="h-5 w-5" />
+           </Button>
+        </div>
+
         <div className="relative mb-6 inline-flex items-center justify-center">
              <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full animate-pulse" />
              <div className="relative rounded-3xl bg-gradient-to-br from-orange-500 to-yellow-500 p-6 shadow-lg shadow-orange-500/20 transform hover:scale-105 transition-transform duration-500">
@@ -67,6 +98,45 @@ function StreakPage() {
             </div>
         </div>
       </header>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <section className="mb-10 rounded-3xl border border-orange-500/30 bg-orange-500/5 p-6 animate-in slide-in-from-top-4 duration-500">
+           <h2 className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-4 flex items-center gap-2">
+              <Settings2 className="h-3.5 w-3.5" />
+              Streak Settings
+           </h2>
+           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex-1 flex gap-2">
+                 <Input 
+                   type="number" 
+                   placeholder="Set custom streak..." 
+                   value={newStreakValue}
+                   onChange={(e) => setNewStreakValue(e.target.value)}
+                   className="bg-background/50 border-orange-500/20 focus-visible:ring-orange-500/30 h-10"
+                 />
+                 <Button 
+                   onClick={handleUpdateStreak}
+                   className="bg-orange-500 hover:bg-orange-600 text-white gap-2"
+                   size="sm"
+                 >
+                    <Check className="h-4 w-4" />
+                    Set
+                 </Button>
+              </div>
+              <div className="h-px w-full bg-orange-500/10 sm:h-8 sm:w-px" />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleResetStreak}
+                className="border-red-500/30 text-red-600 hover:bg-red-50 gap-2 font-bold uppercase text-[10px] tracking-widest"
+              >
+                 <RotateCcw className="h-3.5 w-3.5" />
+                 Reset Progress
+              </Button>
+           </div>
+        </section>
+      )}
 
       {/* Activity Grid */}
       <section className="mb-10 rounded-3xl border border-border/30 bg-card/30 backdrop-blur-md p-6">
@@ -107,7 +177,7 @@ function StreakPage() {
          
          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex items-center gap-4 rounded-2xl border border-border/30 bg-card/20 p-4 transition-all hover:bg-card/40">
-               <div className={`p-3 rounded-xl ${streakData.currentStreak >= 3 ? 'bg-orange-500 text-white' : 'bg-muted text-muted-foreground opacity-50'}`}>
+               <div className={`p-3 rounded-xl transition-colors duration-500 ${streakData.currentStreak >= 3 ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-muted text-muted-foreground opacity-50'}`}>
                   <Star className="h-5 w-5" />
                </div>
                <div>
@@ -116,7 +186,7 @@ function StreakPage() {
                </div>
             </div>
             <div className="flex items-center gap-4 rounded-2xl border border-border/30 bg-card/20 p-4 transition-all hover:bg-card/40">
-               <div className={`p-3 rounded-xl ${streakData.currentStreak >= 7 ? 'bg-orange-500 text-white' : 'bg-muted text-muted-foreground opacity-50'}`}>
+               <div className={`p-3 rounded-xl transition-colors duration-500 ${streakData.currentStreak >= 7 ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-muted text-muted-foreground opacity-50'}`}>
                   <Trophy className="h-5 w-5" />
                </div>
                <div>
