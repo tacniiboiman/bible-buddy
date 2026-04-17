@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, useLocation } from "@tanstack/react-router";
-import { BookOpen, Calendar } from "lucide-react";
+import { BookOpen, Calendar, Flame } from "lucide-react";
+import { updateStreak } from "@/lib/streak-store";
 
 function NotFoundComponent() {
   return (
@@ -32,12 +33,14 @@ export const Route = createRootRoute({
 const navItems = [
   { label: "Verses", icon: BookOpen, to: "/" },
   { label: "Schedule", icon: Calendar, to: "/schedule" },
+  { label: "Streak", icon: Flame, to: "/streak" },
 ] as const;
 
 function RootComponent() {
   const location = useLocation();
 
   useEffect(() => {
+    updateStreak();
     import("@/lib/pwa-register").then(({ registerServiceWorker }) => {
       registerServiceWorker();
     });
