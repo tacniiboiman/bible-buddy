@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
@@ -43,6 +44,19 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: appCss,
       },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
+      {
+        rel: "icon",
+        href: "/icon-192.png",
+        type: "image/png",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/icon-192.png",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -65,5 +79,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    import("@/lib/pwa-register").then(({ registerServiceWorker }) => {
+      registerServiceWorker();
+    });
+  }, []);
+
   return <Outlet />;
 }
