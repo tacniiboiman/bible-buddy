@@ -22,25 +22,40 @@ export function AuthDialog({ user, onAuthChange }: AuthDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isReset, setIsReset] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
-    const { error: authError } = isSignUp
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-      setError(authError.message);
+    if (isReset) {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setSuccess("Check your email for the reset link!");
+        setIsReset(false);
+      }
     } else {
-      setOpen(false);
-      setEmail("");
-      setPassword("");
-      onAuthChange();
+      const { error: authError } = isSignUp
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError) {
+        setError(authError.message);
+      } else {
+        setOpen(false);
+        setEmail("");
+        setPassword("");
+        onAuthChange();
+      }
     }
     setLoading(false);
   }
@@ -76,15 +91,18 @@ export function AuthDialog({ user, onAuthChange }: AuthDialogProps) {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-serif text-xl">
-            {isSignUp ? "Create Account" : "Sign In"}
+            {isReset ? "Reset Password" : isSignUp ? "Create Account" : "Sign In"}
           </DialogTitle>
           <DialogDescription>
-            {isSignUp
+            {isReset
+              ? "We'll send a password recovery link to your email."
+              : isSignUp
               ? "Create an account to sync verses across devices."
               : "Sign in to access your verses on any device."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
+          {success && <p className="text-xs text-green-600 font-medium">{success}</p>}
           <Input
             type="email"
             placeholder="Email"
@@ -92,30 +110,57 @@ export function AuthDialog({ user, onAuthChange }: AuthDialogProps) {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+          {!isReset && (
+            <Input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          )}
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+            {loading ? "Loading..." : isReset ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
           </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError("");
-            }}
-            className="w-full text-center text-xs text-muted-foreground hover:underline"
-          >
-            {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-          </button>
+          
+          <div className="flex flex-col gap-2">
+            {!isReset && !isSignUp && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReset(true);
+                  setError("");
+                }}
+                className="w-full text-center text-xs text-muted-foreground hover:underline"
+              >
+                Forgot Password?
+              </button>
+            )}
+            
+            <button
+              type="button"
+              onClick={() => {
+                if (isReset) {
+                  setIsReset(false);
+                } else {
+                  setIsSignUp(!isSignUp);
+                }
+                setError("");
+              }}
+              className="w-full text-center text-xs text-muted-foreground hover:underline"
+            >
+              {isReset 
+                ? "Back to Sign In" 
+                : isSignUp 
+                ? "Already have an account? Sign in" 
+                : "Don't have an account? Sign up"}
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+
