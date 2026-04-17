@@ -22,6 +22,7 @@ export type Database = {
           tags: string[]
           text: string
           user_id: string
+          is_memorized: boolean | null
         }
         Insert: {
           created_at?: string
@@ -30,6 +31,7 @@ export type Database = {
           tags?: string[]
           text: string
           user_id: string
+          is_memorized?: boolean | null
         }
         Update: {
           created_at?: string
@@ -38,6 +40,7 @@ export type Database = {
           tags?: string[]
           text?: string
           user_id?: string
+          is_memorized?: boolean | null
         }
         Relationships: []
       }

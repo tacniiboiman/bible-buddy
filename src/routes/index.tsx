@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { BookOpen, Search, X, Tag, Cloud, HardDrive, RefreshCw, SortAsc, LayoutGrid, List } from "lucide-react";
+import { BookOpen, Search, X, Tag, Cloud, HardDrive, RefreshCw, SortAsc, LayoutGrid, List, Sparkles, Brain, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VerseDialog } from "@/components/VerseDialog";
@@ -12,6 +12,7 @@ import {
   saveVerse, 
   deleteVerse, 
   updateVerse,
+  toggleMemorized,
   getAllTags, 
   type BibleVerse 
 } from "@/lib/verse-store";
@@ -19,15 +20,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Index,
-  head: () => ({
-    meta: [
-      { title: "Bible Memory — Save & Memorize Scripture" },
-      {
-        name: "description",
-        content: "A simple app to save, tag, and memorize your favorite Bible verses.",
-      },
-    ],
-  }),
 });
 
 const BIBLE_BOOKS = [
@@ -97,6 +89,14 @@ function Index() {
 
   const allTags = useMemo(() => getAllTags(verses), [verses]);
 
+  // Verse of the Day Logic: Consistent random verse based on the date
+  const verseOfTheDay = useMemo(() => {
+    if (verses.length === 0) return null;
+    const dateStr = new Date().toISOString().split('T')[0];
+    const hash = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return verses[hash % verses.length];
+  }, [verses]);
+
   const sortedAndFiltered = useMemo(() => {
     let result = [...verses];
     
@@ -122,7 +122,6 @@ function Index() {
         const bookA = getBookIndex(a.reference);
         const bookB = getBookIndex(b.reference);
         if (bookA !== bookB) return bookA - bookB;
-        // Secondary sort by reference text (chapter/verse)
         return a.reference.localeCompare(b.reference, undefined, { numeric: true });
       }
       return 0;
@@ -170,52 +169,95 @@ function Index() {
     }
   }
 
+  async function handleToggleMemorized(id: string) {
+    try {
+      const updated = await toggleMemorized(id);
+      setVerses((prev) => prev.map(v => v.id === id ? updated : v));
+    } catch (err) {
+      console.error("Failed to toggle memorized:", err);
+    }
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-4 py-8 sm:px-6">
-      {/* Header */}
-      <header className="mb-8 text-center relative">
-        <div className="mb-3 inline-flex items-center justify-center rounded-full bg-accent p-3">
-          <BookOpen className="h-8 w-8 text-primary" />
+      {/* Dynamic Header */}
+      <header className="mb-10 text-center relative border border-border/20 rounded-3xl p-8 bg-card/40 backdrop-blur-xl shadow-xl shadow-primary/5 isolate overflow-hidden">
+        <div className="absolute -top-24 -left-24 h-48 w-48 bg-primary/10 rounded-full blur-3xl -z-10" />
+        <div className="absolute -bottom-24 -right-24 h-48 w-48 bg-accent/20 rounded-full blur-3xl -z-10" />
+        
+        <div className="mb-4 inline-flex items-center justify-center rounded-2xl bg-primary/10 p-3 shadow-inner">
+          <BookOpen className="h-10 w-10 text-primary" />
         </div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="font-serif text-4xl font-black tracking-tight text-foreground sm:text-5xl">
           Bible Memory
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Save, tag, and memorize your favorite scripture
+        <p className="mt-3 text-sm font-medium text-muted-foreground max-w-xs mx-auto leading-relaxed">
+          The elegant way to save, tag, and hidden-word memorize your favorite scriptures.
         </p>
         
         {isSyncing && (
-          <div className="absolute top-0 right-0 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground animate-pulse">
+          <div className="absolute top-4 right-6 flex items-center gap-1.5 text-[10px] font-bold text-primary/60 uppercase tracking-widest animate-pulse">
             <RefreshCw className="h-3 w-3 animate-spin" />
-            Syncing...
+            Syncing
           </div>
         )}
       </header>
 
+      {/* Verse of the Day Hero */}
+      {verseOfTheDay && !search && !activeTag && (
+        <div className="mb-10 relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+          <div className="relative rounded-2xl bg-card border border-primary/10 p-6 shadow-sm overflow-hidden">
+             <div className="absolute top-0 right-0 p-4">
+                <Sparkles className="h-5 w-5 text-primary/30" />
+             </div>
+             <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+                <Sparkles className="h-3 w-3" />
+                Verse of the Day
+             </div>
+             <p className="font-serif text-xl italic font-medium text-foreground/90 leading-relaxed mb-4">
+               "{verseOfTheDay.text}"
+             </p>
+             <div className="flex items-center justify-between">
+                <span className="font-serif font-bold text-primary">{verseOfTheDay.reference}</span>
+                <div className="flex gap-2">
+                   <button 
+                     onClick={() => handleToggleMemorized(verseOfTheDay.id)}
+                     className={`rounded-full p-2 transition-all ${verseOfTheDay.isMemorized ? 'bg-green-100 text-green-600' : 'bg-accent/50 text-muted-foreground hover:bg-accent'}`}
+                   >
+                     {verseOfTheDay.isMemorized ? <CheckCircle2 className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Auth + Status */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 bg-secondary/20 p-2 rounded-2xl border border-border/30">
         <AuthDialog user={user} onAuthChange={loadUser} />
-        <div className="flex items-center gap-2">
-           {user ? (
-             <span className="flex items-center gap-1 text-xs text-muted-foreground bg-accent/50 px-2 py-1 rounded-full">
-               <Cloud className="h-3 w-3" />
-               Cloud Synced
-             </span>
-           ) : (
-             <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-               <HardDrive className="h-3 w-3" />
-               Local Storage
-             </span>
-           )}
-           <Button 
-             variant="ghost" 
-             size="icon" 
-             className="h-8 w-8 text-muted-foreground hover:text-primary"
+        <div className="flex items-center gap-2 pr-2">
+           <div className="flex items-center gap-2">
+              {user ? (
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100">
+                  <Cloud className="h-3 w-3" />
+                  Synced
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                  <HardDrive className="h-3 w-3" />
+                  Local
+                </span>
+              )}
+           </div>
+           <button 
+             className="h-9 w-9 flex items-center justify-center rounded-xl bg-background text-muted-foreground hover:text-primary hover:bg-card transition-all shadow-sm border border-border/50"
              onClick={handleSync}
              disabled={isSyncing}
+             title="Force Sync"
            >
              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-           </Button>
+           </button>
         </div>
       </div>
 
@@ -224,26 +266,26 @@ function Index() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search verses or tags..."
+            placeholder="Search scripture..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-11 rounded-xl bg-card/50 border-border/50 focus-visible:ring-primary/20 transition-all font-medium"
           />
         </div>
         <VerseDialog onSave={handleAdd} existingTags={allTags} />
       </div>
 
       {/* Organization Controls */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        <div className="flex items-center gap-2">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 bg-background/50 backdrop-blur-md p-2 rounded-xl border-b border-border/30 sticky top-2 z-20">
+        <div className="flex items-center gap-2 px-2">
           <SortAsc className="h-4 w-4 text-muted-foreground" />
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
+            className="bg-transparent text-[11px] font-bold uppercase tracking-widest focus:outline-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
           >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
             <option value="bible">Bible Order</option>
           </select>
         </div>
@@ -251,24 +293,24 @@ function Index() {
         <div className="flex items-center gap-2">
            <button
              onClick={() => setGroupByBook(!groupByBook)}
-             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-               groupByBook ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent"
+             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[11px] font-bold uppercase tracking-widest transition-all ${
+               groupByBook ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-accent/50"
              }`}
            >
              {groupByBook ? <LayoutGrid className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
-             {groupByBook ? "Grouped by Book" : "List View"}
+             {groupByBook ? "Books" : "List"}
            </button>
         </div>
       </div>
 
       {/* Tag filter */}
       {allTags.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <Tag className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-8 flex flex-wrap items-center gap-2">
+          <Tag className="h-3.5 w-3.5 text-muted-foreground" />
           {activeTag && (
             <button
               onClick={() => setActiveTag(null)}
-              className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-[10px] font-bold text-primary-foreground shadow-sm animate-in zoom-in-95 duration-200"
             >
               {activeTag}
               <X className="h-3 w-3" />
@@ -280,7 +322,7 @@ function Index() {
               <button
                 key={tag}
                 onClick={() => setActiveTag(tag)}
-                className="rounded-full bg-tag px-3 py-1 text-xs font-medium text-tag-foreground transition-colors hover:opacity-80"
+                className="rounded-full bg-tag/30 backdrop-blur-sm px-4 py-1.5 text-[10px] font-bold text-tag-foreground hover:bg-tag/50 transition-all border border-border/10"
               >
                 {tag}
               </button>
@@ -289,22 +331,26 @@ function Index() {
       )}
 
       {/* Verse list */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {verses.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center">
-            <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">
-              No verses yet. Add your first verse to get started!
+          <div className="rounded-3xl border-2 border-dashed border-border/50 py-24 text-center bg-card/20 backdrop-blur-sm">
+            <BookOpen className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
+            <h3 className="font-serif text-lg font-bold text-foreground opacity-60">Your collection is empty</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add a verse to start your memorization journey.
             </p>
           </div>
         ) : sortedAndFiltered.length === 0 ? (
-           <div className="py-16 text-center text-sm text-muted-foreground">
-             No verses match your search.
+           <div className="py-24 text-center">
+             <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
+             <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+               No matches found
+             </p>
            </div>
         ) : groupByBook && groupedVerses ? (
           Object.entries(groupedVerses).map(([book, verses]) => (
-            <div key={book} className="space-y-3">
-              <h2 className="font-serif text-sm font-bold uppercase tracking-widest text-primary/70 pl-1">
+            <div key={book} className="space-y-4">
+              <h2 className="font-serif text-xs font-black uppercase tracking-[0.3em] text-primary/60 pl-2">
                 {book}
               </h2>
               {verses.map((verse) => (
@@ -313,6 +359,7 @@ function Index() {
                   verse={verse}
                   onDelete={handleDelete}
                   onEdit={handleEdit}
+                  onToggleMemorized={handleToggleMemorized}
                   onTagClick={setActiveTag}
                   existingTags={allTags}
                 />
@@ -326,6 +373,7 @@ function Index() {
               verse={verse}
               onDelete={handleDelete}
               onEdit={handleEdit}
+              onToggleMemorized={handleToggleMemorized}
               onTagClick={setActiveTag}
               existingTags={allTags}
             />
@@ -333,14 +381,21 @@ function Index() {
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer statistics */}
       {verses.length > 0 && (
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          {verses.length} verse{verses.length !== 1 ? "s" : ""} available {user ? "across all devices" : "locally"}
-        </p>
+        <div className="mt-12 py-8 border-t border-border/20 text-center">
+          <div className="inline-flex gap-8">
+             <div className="text-center">
+                <div className="text-lg font-black text-foreground">{verses.length}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Verses</div>
+             </div>
+             <div className="text-center">
+                <div className="text-lg font-black text-green-600">{verses.filter(v => v.isMemorized).length}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Memorized</div>
+             </div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
-
-

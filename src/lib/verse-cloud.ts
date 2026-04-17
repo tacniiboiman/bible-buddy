@@ -15,6 +15,7 @@ export async function fetchCloudVerses(): Promise<BibleVerse[]> {
     text: row.text,
     tags: row.tags || [],
     createdAt: row.created_at,
+    isMemorized: row.is_memorized,
   }));
 }
 
@@ -43,6 +44,7 @@ export async function saveCloudVerse(
     text: data.text,
     tags: data.tags || [],
     createdAt: data.created_at,
+    isMemorized: data.is_memorized,
   };
 }
 
@@ -55,7 +57,8 @@ export async function updateCloudVerse(
   id: string,
   reference: string,
   text: string,
-  tags: string[]
+  tags: string[],
+  isMemorized?: boolean
 ): Promise<BibleVerse> {
   const { data, error } = await supabase
     .from("verses")
@@ -63,6 +66,7 @@ export async function updateCloudVerse(
       reference: reference.trim(),
       text: text.trim(),
       tags: tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
+      is_memorized: isMemorized,
     })
     .eq("id", id)
     .select()
@@ -76,6 +80,7 @@ export async function updateCloudVerse(
     text: data.text,
     tags: data.tags || [],
     createdAt: data.created_at,
+    isMemorized: data.is_memorized,
   };
 }
 

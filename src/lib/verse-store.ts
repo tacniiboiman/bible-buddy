@@ -7,6 +7,7 @@ export interface BibleVerse {
   text: string;
   tags: string[];
   createdAt: string;
+  isMemorized?: boolean;
 }
 
 const STORAGE_KEY = "bible-memory-verses";
@@ -52,6 +53,7 @@ export async function saveVerse(
     text: text.trim(),
     tags: tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
     createdAt: new Date().toISOString(),
+    isMemorized: false,
   };
 
   // Always save locally first (Persistence)
@@ -97,7 +99,8 @@ export async function updateVerse(
   id: string,
   reference: string,
   text: string,
-  tags: string[]
+  tags: string[],
+  isMemorized?: boolean
 ): Promise<BibleVerse> {
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -111,6 +114,7 @@ export async function updateVerse(
     reference: reference.trim(),
     text: text.trim(),
     tags: tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
+    isMemorized: isMemorized ?? localVerses[verseIndex].isMemorized ?? false,
   };
 
   // Update locally
@@ -120,7 +124,7 @@ export async function updateVerse(
   // Update cloud if logged in
   if (user) {
     try {
-      return await updateCloudVerse(id, reference, text, tags);
+      return await updateCloudVerse(id, reference, text, tags, updatedVerse.isMemorized);
     } catch (error) {
       console.error("Failed to update cloud verse:", error);
     }
@@ -134,5 +138,20 @@ export function getAllTags(verses: BibleVerse[]): string[] {
   verses.forEach((v) => v.tags.forEach((t) => tagSet.add(t)));
   return Array.from(tagSet).sort();
 }
+
+export async function toggleMemorized(id: string): Promise<BibleVerse> {
+  const localVerses = getLocalVerses();
+  const verse = localVerses.find(v => v.id === id);
+  if (!verse) throw new Error("Verse not found");
+  
+  return await updateVerse(
+    id, 
+    verse.reference, 
+    verse.text, 
+    verse.tags, 
+    !verse.isMemorized
+  );
+}
+
 
 
